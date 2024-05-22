@@ -21,31 +21,66 @@ from qiskit.algorithms.optimizers import SPSA
 # Use Aer's qasm_simulator
 simulator = AerSimulator()
 
-def add_proj_gate(phi, theta, cr): 
+def add_single_proj_gate(phi, theta, cr): 
     """Helper function to insert Bmatrix to a circuit for a given phi and theta angle"""
     cr.rz(-1*phi, [0, 3])
     cr.ry(theta-math.pi, [0, 3])
     cr.rz(phi, [0, 3])
 
-def add_proj_gate_conj(phi, theta, cr):
+def add_single_proj_gate_conj(phi, theta, cr):
     """Helper function to insert Bmatrix conjugate to a circuit for a given phi and theta angle"""
     cr.rz(-1*phi, [0, 3])
     cr.ry(math.pi-theta, [0, 3])
     cr.rz(phi, [0, 3])
 
+def add_beamsplitter(top_index, angle, cr):
+    cr.cz(top_index, top_index+1) 
+    cr.cx(top_index, top_index+1)
+    cr.cry(angle, top_index+1, top_index)
+    cr.cx(top_index, top_index+1)
+    cr.cz(top_index, top_index+1)
+
+def add_mult_proj_bot(top_index, ancilla, cr):
+    cr.cz(top_index, top_index+1)
+    cr.cx(top_index, top_index+1)
+    cr.cx(top_index+1, top_index)
+    cr.cz(top_index+1, top_index)
+    cr.crx(math.pi, top_index, top_index+1)
+    cr.cx(top_index, ancilla)
+    cr.cx(top_index+1, ancilla+1)
+    cr.crx(math.pi, top_index, top_index+1)
+    cr.cz(top_index+1, top_index)
+    cr.cx(top_index+1, top_index)
+    cr.cx(top_index, top_index+1)
+    cr.cz(top_index, top_index+1)
+
+def add_mult_proj_top(top_index, ancilla, cr): 
+    cr.cz(top_index+1, top_index)
+    cr.cx(top_index+1, top_index)
+    cr.cx(top_index, top_index+1)
+    cr.cz(top_index, top_index+1)
+    cr.crx(math.pi, top_index+1, top_index)
+    cr.cx(top_index, ancilla)
+    cr.cx(top_index+1, ancilla+1)
+    cr.crx(math.pi, top_index+1, top_index)
+    cr.cz(top_index, top_index+1)
+    cr.cx(top_index, top_index+1)
+    cr.cx(top_index+1, top_index)
+    cr.cz(top_index+1, top_index)
+
 def make_spin_circuits(phi_1, phi_2, theta_1, theta_2, time):
     circuit = QuantumCircuit(6) #need 2N qubits in order to calculate the cost function at the end
     circuit.h([0, 3])
     circuit.rz(time, [0, 3]) #first time evolution
-    add_proj_gate_conj(phi_1, theta_1, circuit)
+    add_single_proj_gate_conj(phi_1, theta_1, circuit)
     circuit.cx(0, 1)
     circuit.cx(3, 4)
-    add_proj_gate(phi_1, theta_1, circuit)
+    add_single_proj_gate(phi_1, theta_1, circuit)
     circuit.rz(time, [0,3]) #second time evolution
-    add_proj_gate_conj(phi_2, theta_2, circuit)
+    add_single_proj_gate_conj(phi_2, theta_2, circuit)
     circuit.cx(0, 2)
     circuit.cx(3, 5)
-    add_proj_gate(phi_2, theta_2, circuit)
+    add_single_proj_gate(phi_2, theta_2, circuit)
 
     measPartial = QuantumCircuit(6, 2) #6 qubits, and 4 classical bits to record outcome
     measPartial.barrier(range(6)) #just draws a barrier on the circuit
@@ -69,6 +104,40 @@ def make_spin_circuits(phi_1, phi_2, theta_1, theta_2, time):
     qcFull = measFull.compose(circuit, range(6), front=True)
 
     return(qcPartial, qcFull)
+
+def make_interfer_test_circuits(phi_1, phi_2, theta_1, theta_2, start, meas):
+    """
+    Use 'none' for angles of projectors that won't be added. Use 'proj' or 'system' to define what to measure
+    """
+    circuit = QuantumCircuit(6) #need 2N qubits in order to calculate the cost function at the end
+    if start == 'bot':
+        circuit.x([0, 3]) #set which arm it starts in
+    circuit.ry(math.pi/2, [0, 3]) #first beamsplitter
+    if phi_1 != 'none':
+        add_single_proj_gate_conj(phi_1, theta_1, circuit)
+        circuit.cx(0, 1)
+        circuit.cx(3, 4)
+        add_single_proj_gate(phi_1, theta_1, circuit)
+    circuit.ry(-1*math.pi/2, [0,3]) #second beamsplitter
+    if phi_2 != 'none':
+        add_single_proj_gate_conj(phi_2, theta_2, circuit)
+        circuit.cx(0, 2)
+        circuit.cx(3, 5)
+        add_single_proj_gate(phi_2, theta_2, circuit)
+
+    if meas == 'proj':
+        measTest = QuantumCircuit(6, 2) #6 qubits, and 4 classical bits to record outcome
+        measTest.barrier(range(6)) #just draws a barrier on the circuit
+        measTest.measure([4, 5], range(2)) #add the two measurements
+    elif meas == 'system':
+        measTest = QuantumCircuit(6, 1) #6 qubits, and 4 classical bits to record outcome
+        measTest.barrier(range(6)) #just draws a barrier on the circuit
+        measTest.measure([3], range(1)) #add the two measurements
+
+    #smooshing together the acutal circuit and the measurements on the end
+    qcTest = measTest.compose(circuit, range(6), front=True)
+
+    return(qcTest)
 
 def bind_parameters(varying_params, qcFull, qcPartial):
     first_angle = varying_params[0][0]
@@ -138,6 +207,23 @@ def run_spin_simulation(in_phi_1, in_phi_2, in_theta_1, in_theta_2, time):
     cost_matrix = np.reshape(cost_matrix, (32, 32))
     cost_matrix = np.rot90(cost_matrix)
     return cost_matrix, varying_params
+
+def run_interfer_test(in_phi_1, in_phi_2, in_theta_1, in_theta_2, start_in, meas_in):
+    
+    qcTest = make_interfer_test_circuits(in_phi_1, in_phi_2, in_theta_1, in_theta_2, start_in, meas_in)
+
+    compiled_circuit_test = transpile(qcTest, simulator)
+
+    # Execute the circuit on the qasm simulator
+    job_test = simulator.run(compiled_circuit_test, shots=1024)
+
+    # Grab results from the job
+    result_test = job_test.result()
+
+    # Returns counts
+    counts_test = result_test.get_counts()
+
+    return(counts_test)
 
 fails = {'0101', '0111', '1010', '1011', '1101', '1110'}
 shots = 1024
