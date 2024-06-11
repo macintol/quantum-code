@@ -2,10 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import cmath
 import math
-import itertools
-import random
 from scipy.optimize import minimize
 
 #qiskit import statements
@@ -21,19 +18,20 @@ from qiskit.algorithms.optimizers import SPSA
 # Use Aer's qasm_simulator
 simulator = AerSimulator()
 
-def add_single_proj_gate(phi, theta, cr): 
+def add_single_proj_gate(phi, theta, cr, qubits): 
     """Helper function to insert Bmatrix to a circuit for a given phi and theta angle"""
-    cr.rz(-1*phi, [0, 3])
-    cr.ry(theta-math.pi, [0, 3])
-    cr.rz(phi, [0, 3])
+    cr.rz(-1*phi, qubits)
+    cr.ry(theta-math.pi, qubits)
+    cr.rz(phi, qubits)
 
-def add_single_proj_gate_conj(phi, theta, cr):
+def add_single_proj_gate_conj(phi, theta, cr, qubits):
     """Helper function to insert Bmatrix conjugate to a circuit for a given phi and theta angle"""
-    cr.rz(-1*phi, [0, 3])
-    cr.ry(math.pi-theta, [0, 3])
-    cr.rz(phi, [0, 3])
+    cr.rz(-1*phi, qubits)
+    cr.ry(math.pi-theta, qubits)
+    cr.rz(phi, qubits)
 
 def add_beamsplitter(top_index, angle, cr):
+    """Helper function to insert beamsplitter for a given angle (representing the reflectivity)"""
     cr.cz(top_index, top_index+1) 
     cr.cx(top_index, top_index+1)
     cr.cry(angle, top_index+1, top_index)
@@ -41,6 +39,7 @@ def add_beamsplitter(top_index, angle, cr):
     cr.cz(top_index, top_index+1)
 
 def add_mult_proj_bot(top_index, ancilla, cr):
+    """Helper function to insert projector for bottom arm of interferomter (both B and Bconj)"""
     cr.cz(top_index, top_index+1)
     cr.cx(top_index, top_index+1)
     cr.cx(top_index+1, top_index)
@@ -55,6 +54,7 @@ def add_mult_proj_bot(top_index, ancilla, cr):
     cr.cz(top_index, top_index+1)
 
 def add_mult_proj_top(top_index, ancilla, cr): 
+    """Helper function to insert projector for top arm of interferomter (both B and Bconj)"""
     cr.cz(top_index+1, top_index)
     cr.cx(top_index+1, top_index)
     cr.cx(top_index, top_index+1)
@@ -291,6 +291,6 @@ def visualize_cost(cost_matrix, varying_params):
 
 
 #sample inputs: 
-initial_guess = np.array([0,1])
-result = minimize(cost_function, initial_guess, method='COBYLA')
-print(result)
+#initial_guess = np.array([0,1])
+#result = minimize(cost_function, initial_guess, method='COBYLA')
+#print(result)
