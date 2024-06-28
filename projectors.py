@@ -16,7 +16,7 @@ from qiskit.circuit import Parameter #allows us to have parameterized gates
 from qiskit.algorithms.optimizers import SPSA
 
 # Use Aer's qasm_simulator
-simulator = AerSimulator()
+#simulator = AerSimulator()
 
 def add_single_proj_gate(phi, theta, cr, qubits): 
     """Helper function to insert Bmatrix to a circuit for a given phi and theta angle"""
@@ -152,7 +152,7 @@ def bind_parameters(varying_params, qcFull, qcPartial):
             
     return(full_circuits, partial_circuits)
 
-def run_spin_simulation(in_phi_1, in_phi_2, in_theta_1, in_theta_2, time):
+def run_spin_simulation(in_phi_1, in_phi_2, in_theta_1, in_theta_2, time, simulator):
     #this first bit sets what the variable parameters are and sets the rest to the input values
     varying_params = []
     cost_matrix = np.zeros(32**2)
@@ -208,7 +208,7 @@ def run_spin_simulation(in_phi_1, in_phi_2, in_theta_1, in_theta_2, time):
     cost_matrix = np.rot90(cost_matrix)
     return cost_matrix, varying_params
 
-def run_interfer_test(in_phi_1, in_phi_2, in_theta_1, in_theta_2, start_in, meas_in):
+def run_interfer_test(in_phi_1, in_phi_2, in_theta_1, in_theta_2, start_in, meas_in, simulator):
     
     qcTest = make_interfer_test_circuits(in_phi_1, in_phi_2, in_theta_1, in_theta_2, start_in, meas_in)
 
@@ -225,6 +225,36 @@ def run_interfer_test(in_phi_1, in_phi_2, in_theta_1, in_theta_2, start_in, meas
 
     return(counts_test)
 
+def run_basic_circuit(circuit, simulator):
+    """just runs any circuti and returns the measured outputs, defaults to using AerSimulator and 1024 shots"""
+    compiled_circuit = transpile(circuit, simulator)
+
+    # Execute the circuit on the qasm simulator
+    job = simulator.run(compiled_circuit, shots=1024)
+
+    # Grab results from the job
+    result = job.result()
+
+    # Returns counts
+    counts = result.get_counts()
+
+    return(compiled_circuit, counts)
+
+def run_basic_circuit_sv(circuit, simulator):
+    """just runs any circuti and returns the measured outputs, defaults to using AerSimulator and 1024 shots"""
+    compiled_circuit = transpile(circuit, simulator)
+
+    # Execute the circuit on the qasm simulator
+    job = simulator.run(compiled_circuit)
+
+    # Grab results from the job
+    result = job.result()
+
+    # Returns counts
+    counts = result.get_counts()
+
+    return(compiled_circuit, result)
+
 fails = {'0101', '0111', '1010', '1011', '1101', '1110'}
 shots = 1024
 
@@ -238,7 +268,7 @@ def compute_cost(full_counts, partial_counts):
     overlap_partial = partial_counts['00']/shots
     return overlap_full-overlap_partial
 
-def cost_function(var_array):
+def cost_function(var_array, simulator):
     #this first bit sets what the variable parameters are and sets the rest to the input values
     in_phi_1 = var_array[0]
     in_phi_2 = var_array[1]
