@@ -21,13 +21,13 @@ from qiskit.algorithms.optimizers import SPSA
 def add_single_proj_gate(phi, theta, cr, qubits): 
     """Helper function to insert Bmatrix to a circuit for a given phi and theta angle"""
     cr.rz(-1*phi, qubits)
-    cr.ry(theta-math.pi, qubits)
+    cr.ry(-1*theta, qubits)
     cr.rz(phi, qubits)
 
 def add_single_proj_gate_conj(phi, theta, cr, qubits):
     """Helper function to insert Bmatrix conjugate to a circuit for a given phi and theta angle"""
     cr.rz(-1*phi, qubits)
-    cr.ry(math.pi-theta, qubits)
+    cr.ry(theta, qubits)
     cr.rz(phi, qubits)
 
 def add_beamsplitter(top_index, angle, cr):
