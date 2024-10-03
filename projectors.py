@@ -32,41 +32,41 @@ def add_single_proj_gate_conj(phi, theta, cr, qubits):
 
 def add_beamsplitter(top_index, angle, cr):
     """Helper function to insert beamsplitter for a given angle (representing the reflectivity)"""
+    cr.x([top_index, top_index+1])
     cr.cz(top_index, top_index+1) 
+    cr.x([top_index, top_index+1])
     cr.cx(top_index, top_index+1)
     cr.cry(angle, top_index+1, top_index)
     cr.cx(top_index, top_index+1)
+    cr.x([top_index, top_index+1])
     cr.cz(top_index, top_index+1)
+    cr.x([top_index, top_index+1])
 
 def add_mult_proj_bot(top_index, ancilla, cr):
     """Helper function to insert projector for bottom arm of interferomter (both B and Bconj)"""
-    cr.cz(top_index, top_index+1)
-    cr.cx(top_index, top_index+1)
-    cr.cx(top_index+1, top_index)
-    cr.cz(top_index+1, top_index)
-    cr.crx(math.pi, top_index, top_index+1)
+    test_circuit.x(top_index+1)
+    test_circuit.z(top_index+1)
+    test_circuit.cz(top_index, top_index+1)
+    test_circuit.cx(top_index+1, top_index)
+    test_circuit.cz(top_index, top_index+1)
     cr.cx(top_index, ancilla)
     cr.cx(top_index+1, ancilla+1)
-    cr.crx(math.pi, top_index, top_index+1)
-    cr.cz(top_index+1, top_index)
-    cr.cx(top_index+1, top_index)
-    cr.cx(top_index, top_index+1)
-    cr.cz(top_index, top_index+1)
+    test_circuit.cz(top_index, top_index+1)
+    test_circuit.cx(top_index+1, top_index)
+    test_circuit.cz(top_index, top_index+1)
+    test_circuit.z(top_index+1)
+    test_circuit.x(top_index+1)
 
 def add_mult_proj_top(top_index, ancilla, cr): 
     """Helper function to insert projector for top arm of interferomter (both B and Bconj)"""
-    cr.cz(top_index+1, top_index)
+    cr.x(top_index+1)
     cr.cx(top_index+1, top_index)
-    cr.cx(top_index, top_index+1)
-    cr.cz(top_index, top_index+1)
-    cr.crx(math.pi, top_index+1, top_index)
+    cr.x(top_index+1)
     cr.cx(top_index, ancilla)
     cr.cx(top_index+1, ancilla+1)
-    cr.crx(math.pi, top_index+1, top_index)
-    cr.cz(top_index, top_index+1)
-    cr.cx(top_index, top_index+1)
+    cr.x(top_index+1)
     cr.cx(top_index+1, top_index)
-    cr.cz(top_index+1, top_index)
+    cr.x(top_index+1)
 
 def make_spin_circuits(phi_1, phi_2, theta_1, theta_2, time):
     circuit = QuantumCircuit(6) #need 2N qubits in order to calculate the cost function at the end
